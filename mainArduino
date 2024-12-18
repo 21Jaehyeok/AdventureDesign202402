@@ -3,6 +3,8 @@ SoftwareSerial BT(10, 11); // Bluetooth RX, TX 핀 연결
 
 const int vibrationPin = 6; // 진동 센서 핀
 const int wifiStatusPin = 7; // WiFi 값 전달 핀
+unsigned long stateStartTime = 0; // 상태 시작 
+const unsigned long TIMEOUT_DURATION = 5000; // 상태 초기화 시간
 
 // 상태 플래그 변수
 bool noUmbrella = false;
@@ -94,12 +96,15 @@ void loop() {
   // 4. 상태 머신
   switch (currentState) {
     case IDLE:
+      stateStartTime = millis();
       if (personSensor < 70) {
         currentState = PERSON_FIRST;  // 사람이 먼저 감지됨
         Serial.println("State: PERSON_FIRST");
+        stateStartTime = millis();
       } else if (sensorState == HIGH) {
         currentState = DOOR_FIRST;  // 문이 먼저 감지됨
         Serial.println("State: DOOR_FIRST");
+        stateStartTime = millis();
       }
       break;
 
@@ -107,6 +112,9 @@ void loop() {
       if (sensorState == HIGH) {
         currentState = CHECK_UMBRELLA;  // 문이 감지되었으므로 우산 확인
         Serial.println("State: CHECK_UMBRELLA");
+      } else if (millis() - stateStartTime >= TIMEOUT_DURATION) {
+        currentState = IDLE; // 일정 시간이 지나면 IDLE로 전환
+        Serial.println("State: IDLE (Timeout)");
       }
       break;
 
@@ -114,6 +122,9 @@ void loop() {
       if (personSensor < 70) {
         currentState = IDLE;  // 사람이 감지되었으나, 문이 먼저 감지되었으므로 초기화
         Serial.println("State: IDLE (No action needed)");
+      } else if (millis() - stateStartTime >= TIMEOUT_DURATION) {
+        currentState = IDLE; // 일정 시간이 지나면 IDLE로 전환
+        Serial.println("State: IDLE (Timeout)");
       }
       break;
 
