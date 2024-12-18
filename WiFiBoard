@@ -1,0 +1,133 @@
+#include <ESP8266WiFi.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// 기상청 서버
+const int httpPort = 80;
+const char* host = "www.kma.go.kr";
+//---------------------------------------------
+const char* ssid = "testWiFi"; // WIFI ID
+const char* password = "rlawodlf2485"; // WIFI PASSWORD
+const String url = "/wid/queryDFSRSS.jsp?zone=4111758500"; // RSS
+//---------------------------------------------
+WiFiClient client;
+
+const int outputPin = 14; //D5
+bool conditionMet = false;
+
+// 지역 정보
+String WfEn = ""; // 날씨(영어)
+String Pop = ""; // 강수확률
+
+void setup() {
+  Serial.begin(9600);
+  lcd.begin();
+  lcd.backlight();
+  pinMode(outputPin, OUTPUT);
+  digitalWrite(outputPin, LOW); 
+  connectWiFi();
+}
+
+void loop() {
+  if (WiFi.status() != WL_CONNECTED) {
+    //Serial.println("WiFi disconnected, attempting to reconnect...");
+    connectWiFi();
+  }else {
+    //Serial.println("connected");
+  }
+  getData();
+
+  sendToArduino();
+
+  showLCD();
+
+  delay(5000);
+}
+
+void getData() {
+  if (client.connect(host, httpPort)) {
+    client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+                 "Host: " + host + "\r\n" + 
+                 "Connection: close\r\n\r\n");
+    //Serial.println("request sent");
+    delay(50);
+  }
+  
+  while (client.connected()) {
+    String line = client.readStringUntil('\n');
+    if (line == "\r") {
+      //Serial.println("headers received");
+      break;
+    }
+  }
+
+  while (client.available()) {
+    String line = client.readStringUntil('\e');
+     
+    // 날씨 영어
+    int wfEn = line.indexOf("</wfEn>");
+    if (wfEn > 0) {
+      String tmp_str = "<wfEn>";
+      String wt_wfEn = line.substring(line.indexOf(tmp_str) + tmp_str.length(), wfEn);
+      WfEn = wt_wfEn;   
+    }
+
+    int pop = line.indexOf("</pop>");
+    if (pop > 0) {
+      String tmp_str = "<pop>";
+      String wt_pop = line.substring(line.indexOf(tmp_str) + tmp_str.length(), pop);
+      Pop = wt_pop;
+    }
+  }
+  
+}
+
+//WfEn == "Clear" ||
+void sendToArduino() {
+  if (WfEn == "Rain" || WfEn == "Rain/Snow" || WfEn == "Shower" || WfEn == "Raindrop" || WfEn == "Raindrop/Snow Drifting" || WfEn == "Snow Drifting") {
+    conditionMet = true;
+  }
+
+  if (Pop.toInt() >= 60) { //테스트용 값 설정, 추후 변경
+    conditionMet = true;
+  }
+
+  if (conditionMet) {
+    digitalWrite(outputPin, HIGH); 
+  } else {
+    digitalWrite(outputPin, LOW); 
+  }
+
+  // Serial 출력
+  String message = "WfEn:" + WfEn + "\n";
+  message += "Pop:" + Pop + "\n";
+  message += "Output Pin State: " + String(conditionMet ? "HIGH" : "LOW") + "\n";
+
+  Serial.print(message);
+}
+
+void connectWiFi() {
+  Serial.println();
+  Serial.println("Connecting to ");
+  Serial.print(ssid);
+  WiFi.hostname("Name");
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.println("connecting WiFi.");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void showLCD(){
+  lcd.setCursor(0, 0);
+  lcd.print(WfEn);
+  lcd.setCursor(0, 1);
+  lcd.print(Pop.toInt());
+}
