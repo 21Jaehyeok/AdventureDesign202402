@@ -1,0 +1,29 @@
+//rain_detector
+
+#include <SoftwareSerial.h>
+
+SoftwareSerial BT(10, 11); // HC-05 연결: RX=10, TX=11
+const int rainSensor = A0; // SZH-SSBH-022 센서 핀 (아날로그 핀)
+
+void setup() {
+  Serial.begin(9600);
+  BT.begin(9600); // HC-05 통신 시작
+  pinMode(rainSensor, INPUT);
+  Serial.println("Master ready");
+}
+ 
+void loop() {
+  int waterLevel = analogRead(rainSensor); // 센서 값 읽기
+  Serial.print("Water Level: ");
+  Serial.println(waterLevel);
+
+  if (waterLevel < 500) {
+    BT.println("Rain=0"); // 비가 내릴시 Rain = 0 전송
+    Serial.println("Sent: Rain=0");
+  } else {
+    BT.println("Rain=1"); // 비가 안내릴시 Rain = 1 전송
+    Serial.println("Sent: Rain=1");
+  }
+
+  delay(1000); 
+}
