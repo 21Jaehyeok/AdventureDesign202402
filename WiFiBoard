@@ -38,14 +38,13 @@ void loop() {
     //Serial.println("connected");
   }
   getData();
-
   sendToArduino();
-
   showLCD();
-
   delay(5000);
 }
 
+// HTTP GET 요청을 통해 기상청 서버로부터 XML데이터 가져오기
+// XML 태그(<pop>, <wfEn>)를 기반으로 데이터 추출
 void getData() {
   if (client.connect(host, httpPort)) {
     client.print(String("GET ") + url + " HTTP/1.1\r\n" +
@@ -84,7 +83,8 @@ void getData() {
   
 }
 
-//WfEn == "Clear" ||
+// 날씨상태(WfEn)와 강수확률(pop)을 기반으로 조건확인
+// 조건이 충족되면 GPIO핀(D5)을 HIGH로 설정하여 알림 장치 작동
 void sendToArduino() {
   if (WfEn == "Rain" || WfEn == "Rain/Snow" || WfEn == "Shower" || WfEn == "Raindrop" || WfEn == "Raindrop/Snow Drifting" || WfEn == "Snow Drifting") {
     conditionMet = true;
@@ -108,6 +108,7 @@ void sendToArduino() {
   Serial.print(message);
 }
 
+// 와이파이에 연결
 void connectWiFi() {
   Serial.println();
   Serial.println("Connecting to ");
@@ -125,6 +126,7 @@ void connectWiFi() {
   Serial.println(WiFi.localIP());
 }
 
+// 날씨 상태와 강수 확률을 LCD에 출력
 void showLCD(){
   lcd.setCursor(0, 0);
   lcd.print(WfEn);
