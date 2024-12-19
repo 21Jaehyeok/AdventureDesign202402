@@ -6,8 +6,8 @@ const int wifiStatusPin = 7; // WiFi 값 전달 핀
 unsigned long stateStartTime = 0; // 상태 시작 
 const unsigned long TIMEOUT_DURATION = 5000; // 상태 초기화 시간
 
-// 상태 플래그 변수
-bool noUmbrella = false;
+// 상태 플래그 변수 초기값
+bool noUmbrella = false; // 우산 감지 플래그
 bool rainDetectedWiFi = false; // WiFi 비 감지 플래그
 bool rainDetectedBT = false; // Bluetooth 비 감지 플래그
 
@@ -18,7 +18,7 @@ enum State {
   CHECK_UMBRELLA // 우산 확인 상태
 };
 
-State currentState = IDLE;
+State currentState = IDLE; //초기 상태 설정
 
 void setup() {
   Serial.begin(9600);
@@ -37,7 +37,7 @@ void setup() {
 
 void loop() {
   // 1. WiFi에서 비 감지 신호 수신
-  int pinState = digitalRead(wifiStatusPin);
+  int pinState = digitalRead(wifiStatusPin); 
   // 상태에 따라 rainDetected 업데이트
   if (pinState == HIGH) {
     rainDetectedWiFi = true;  // 비 감지됨
@@ -74,7 +74,7 @@ void loop() {
   if (duration1 ==0){
     return;
   }
-  long umbrellaSensor = duration1/58.824;
+  long umbrellaSensor = duration1/58.824; //우산 거리 cm 변환
   //Serial.println(umbrellaSensor);
   noUmbrella = umbrellaSensor > 15; // 우산 감지 오프셋
   //Serial.println(noUmbrella);
@@ -87,16 +87,16 @@ void loop() {
   if (duration2 ==0){
     return;
   }
-  long personSensor = duration2/58.824;
+  long personSensor = duration2/58.824; //사람 거리 cm 변환
   //Serial.println(personSensor);
 
   // 3-3. 문(진동 센서) 상태 읽기
-  int sensorState = digitalRead(vibrationPin);
+  int sensorState = digitalRead(vibrationPin); // HIGH일 때 문 열림
 
   // 4. 상태 머신
   switch (currentState) {
     case IDLE:
-      stateStartTime = millis();
+      stateStartTime = millis(); IDLE 상태로 돌아올 때 초기화
       if (personSensor < 70) {
         currentState = PERSON_FIRST;  // 사람이 먼저 감지됨
         Serial.println("State: PERSON_FIRST");
@@ -113,7 +113,7 @@ void loop() {
         currentState = CHECK_UMBRELLA;  // 문이 감지되었으므로 우산 확인
         Serial.println("State: CHECK_UMBRELLA");
       } else if (millis() - stateStartTime >= TIMEOUT_DURATION) {
-        currentState = IDLE; // 일정 시간이 지나면 IDLE로 전환
+        resetState(); // 일정 시간이 지나면 상태 초기화
         Serial.println("State: IDLE (Timeout)");
       }
       break;
@@ -123,24 +123,24 @@ void loop() {
         currentState = IDLE;  // 사람이 감지되었으나, 문이 먼저 감지되었으므로 초기화
         Serial.println("State: IDLE (No action needed)");
       } else if (millis() - stateStartTime >= TIMEOUT_DURATION) {
-        currentState = IDLE; // 일정 시간이 지나면 IDLE로 전환
+        resetState(); // 일정 시간이 지나면 상태 초기화
         Serial.println("State: IDLE (Timeout)");
       }
       break;
 
     case CHECK_UMBRELLA:
-      if (rainDetectedWiFi) {
+      if (rainDetectedWiFi) { //WiFi에서 비 감지
         Serial.println("Action: WiFi indicates rain. Checking umbrella...");
-        if (!noUmbrella) {
+        if (!noUmbrella) { // 우산을 챙기지 않았으므로 알림
           Serial.println("Action: Alert! Take an umbrella.");
           buzz();
         } else {
           Serial.println("Action: No action needed (Umbrella taken).");
         }
       } 
-      else if(rainDetectedBT){
+      else if(rainDetectedBT){ //Bluetooth에서 비 감지
         Serial.println("Action: Bluetooth indicates rain. Checking umbrella...");
-        if (!noUmbrella) {
+        if (!noUmbrella) { // 우산을 챙기지 않았으므로 알림
           Serial.println("Action: Alert! Take an umbrella.");
           buzz();
         }
@@ -148,7 +148,7 @@ void loop() {
           Serial.println("no umbrella");
         }
       }
-      else {
+      else { //비가 감지되지 않음
         Serial.println("Action: No rain detected. No action needed.");
       }
       resetState();  // 상태 초기화
