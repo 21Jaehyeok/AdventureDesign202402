@@ -8,6 +8,7 @@ const unsigned long TIMEOUT_DURATION = 5000; // 상태 초기화 시간
 
 // 상태 플래그 변수 초기값
 bool noUmbrella = false; // 우산 감지 플래그
+bool personDetected = false; // 사람 감지 플래그
 bool rainDetectedWiFi = false; // WiFi 비 감지 플래그
 bool rainDetectedBT = false; // Bluetooth 비 감지 플래그
 
@@ -88,6 +89,7 @@ void loop() {
     return;
   }
   long personSensor = duration2/58.824; //사람 거리 cm 변환
+  personDetected = personSensor < 70; //사람 감지 오프셋
   //Serial.println(personSensor);
 
   // 3-3. 문(진동 센서) 상태 읽기
@@ -96,8 +98,8 @@ void loop() {
   // 4. 상태 머신
   switch (currentState) {
     case IDLE:
-      stateStartTime = millis(); IDLE 상태로 돌아올 때 초기화
-      if (personSensor < 70) {
+      stateStartTime = millis(); //IDLE 상태로 돌아올 때 초기화
+      if (personDetected) {
         currentState = PERSON_FIRST;  // 사람이 먼저 감지됨
         Serial.println("State: PERSON_FIRST");
         stateStartTime = millis();
@@ -119,7 +121,7 @@ void loop() {
       break;
 
     case DOOR_FIRST:
-      if (personSensor < 70) {
+      if (personDetected) {
         currentState = IDLE;  // 사람이 감지되었으나, 문이 먼저 감지되었으므로 초기화
         Serial.println("State: IDLE (No action needed)");
       } else if (millis() - stateStartTime >= TIMEOUT_DURATION) {
