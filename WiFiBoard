@@ -15,7 +15,7 @@ const String url = "/wid/queryDFSRSS.jsp?zone=4111758500"; // RSS
 WiFiClient client;
 
 const int outputPin = 14; //D5
-bool conditionMet = false;
+bool conditionMet = false; // 비 감지 상태 초기값
 
 // 지역 정보
 String WfEn = ""; // 날씨(영어)
@@ -72,7 +72,7 @@ void getData() {
       String wt_wfEn = line.substring(line.indexOf(tmp_str) + tmp_str.length(), wfEn);
       WfEn = wt_wfEn;   
     }
-
+    // 강수 확률
     int pop = line.indexOf("</pop>");
     if (pop > 0) {
       String tmp_str = "<pop>";
